@@ -5,6 +5,6 @@ public class ProgramNode : Node
     public ProgramNode()
     {
         this.Type = NodeType.Program;
-        this.canHaveChildren = true;
+        this.CanHaveChildren = true;
     }
 }

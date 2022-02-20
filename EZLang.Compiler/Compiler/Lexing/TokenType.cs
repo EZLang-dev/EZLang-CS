@@ -13,6 +13,8 @@ public enum TokenType
     Operation,
     Accessor,
     Set,
+    Newline,
+    EndOfFile,
     
     // Language
     

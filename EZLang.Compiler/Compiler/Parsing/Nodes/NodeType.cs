@@ -12,5 +12,7 @@ public enum NodeType
     Globals,
     Block,
     Identifier,
-    FunctionDefiniton
+    FunctionDefinition,
+    IfStatement,
+    Call
 }

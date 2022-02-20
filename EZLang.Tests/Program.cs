@@ -11,13 +11,14 @@ namespace EZLang.Tests
 
         static string program = @"
 program{
-    package sys;
-    sys.Print(""Hello World!"");
+    package sys
+    sys.Console.Print(""Hello World!"")
+}
+if(hello){
+    sys.Console.Print(""Hi!"")
 }
 globals{
     function Test(){
-        if(a == ""a"")
-            return;
     }
 }
 ";

@@ -1,24 +1,26 @@
+using EZLang.Compiler.Lexing;
 using OpenAbility.Debug;
 
 namespace EZLang.Compiler.Parsing.Nodes;
 
 public abstract class Node
 {
-    public Dictionary<string, Node> Children = new Dictionary<string, Node>();
+    public readonly Dictionary<string, Node> Children = new Dictionary<string, Node>();
 
-    protected bool canHaveChildren = true;
-    private static readonly Logger logger = Logger.GetLogger("Node");
+    protected bool CanHaveChildren = true;
+    private static readonly Logger Logger = Logger.GetLogger("Node");
 
     public NodeType Type = NodeType.Undefined;
 
-    public static readonly Node NULL = new NullNode();
+    public static readonly Node Null = new NullNode();
 
-    public Node Parent;
+    public Node? Parent;
     public string Identifier = "NODE_NULL";
+    public int Level = 0;
 
     public Node Remove(string name)
     {
-        if (canHaveChildren)
+        if (CanHaveChildren)
         {
             Node child = Children[name];
             child.Parent = null;
@@ -26,7 +28,7 @@ public abstract class Node
             Children.Remove(name);
         }
         else
-            logger.Error("Cannot remove child nodes of node of type " + Type);
+            Logger.Error("Cannot remove child nodes of node of type " + Type);
         return this;
     }
 
@@ -35,18 +37,32 @@ public abstract class Node
 
         name ??= "NODE_" + Guid.NewGuid().ToString();
 
-        if (canHaveChildren)
+        if (CanHaveChildren)
         {
             Children.Add(name, node);
             node.Parent = this;
             node.Identifier = name;
         }
         else
-            logger.Error("Cannot assign child nodes to node of type " + Type);
+            Logger.Error("Cannot assign child nodes to node of type " + Type);
         return this;
     }
 
-    public virtual string GetTreeName()
+    public Node? ClimbToParent(NodeType type)
+    {
+        if (Parent != null && Parent.Type != type)
+            return Parent.ClimbToParent(type);
+        return Parent;
+    }
+    
+    public Node? ClimbToTopNode(NodeType type)
+    {
+        if (Parent != null && Parent.Type == type)
+            return Parent.ClimbToTopNode(type);
+        return this;
+    }
+
+    protected virtual string GetTreeName()
     {
         return Type.ToString();
     }

@@ -9,12 +9,12 @@ public class TokenNode : Node
     
     public TokenNode(Token value)
     {
-        this.canHaveChildren = false;
+        this.CanHaveChildren = false;
         this.value = value;
         this.Type = NodeType.Token;
     }
 
-    public override string GetTreeName()
+    protected override string GetTreeName()
     {
         return value.ToString();
     }

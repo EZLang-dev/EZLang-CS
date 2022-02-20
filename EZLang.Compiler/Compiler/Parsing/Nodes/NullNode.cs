@@ -5,6 +5,6 @@ public class NullNode : Node
     public NullNode()
     {
         this.Type = NodeType.Null;
-        this.canHaveChildren = false;
+        this.CanHaveChildren = false;
     }
 }

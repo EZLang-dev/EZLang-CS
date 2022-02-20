@@ -6,6 +6,6 @@ public class FunctionDefNode : Node
 {
     public FunctionDefNode()
     {
-        Type = NodeType.FunctionDefiniton;
+        Type = NodeType.FunctionDefinition;
     }
 }

@@ -1,19 +1,18 @@
+using EZLang.Compiler.Language;
 using EZLang.Compiler.Lexing;
 using EZLang.Compiler.Parsing.Nodes;
-using OpenAbility.Debug;
+using EZLang.Diagnostics;
 
 namespace EZLang.Compiler.Parsing;
 
 public class Parser
 {
     
-    private Token[] tokens;
-    private int ptr;
+    private Token[] Tokens = Array.Empty<Token>();
+    private int ptr = -1;
 
-    public List<Node> Nodes;
-    
-    private Logger LOGGER = Logger.GetLogger("Parser");
-    
+    public List<Node> Nodes = new List<Node>();
+
     private bool EndOfFile()
     {
         return EndOfFileAt(0);
@@ -21,7 +20,7 @@ public class Parser
 
     private bool EndOfFileAt(int offset)
     {
-        return ptr + offset >= tokens.Length;
+        return ptr + offset >= Tokens.Length;
     }
 
     private Token Current()
@@ -33,10 +32,10 @@ public class Parser
     {
         if (EndOfFileAt(amt))
         {
-            return Token.NULL;
+            return new Token(Tokens.Last().Position, TokenType.EndOfFile);
         }
 
-        return tokens[ptr + amt];
+        return Tokens[ptr + amt];
     }
 
     private void Step(int amt)
@@ -49,7 +48,7 @@ public class Parser
     {
         if (Current().Type != type)
         {
-            LOGGER.Error(Current().Position + " Unexpected token " + Current().Type);
+            Logger.Throw(ErrorType.UnexpectedToken, Current().Type.ToString(), Current().Position);
             Step(1);
             return Token.NULL;
         }
@@ -62,7 +61,7 @@ public class Parser
     public void Parse(List<Token> tokens) => Parse(tokens.ToArray());
     public void Parse(Token[] tokens)
     {
-        this.tokens = tokens;
+        this.Tokens = tokens;
         this.ptr = 0;
 
         this.Nodes = new List<Node>();
@@ -77,16 +76,32 @@ public class Parser
 
     private Node ParseNode()
     {
-        if (Current().Type == TokenType.ProgramKwd) return ParseProgram();
-        if (Current().Type == TokenType.GlobalsKwd) return ParseGlobals();
-        if (Current().Type == TokenType.OpenBracket) return ParseBrackets();
-        if (Current().Type == TokenType.IncludeKwd) return ParseInclude();
-        if (Current().Type == TokenType.Identifier) return ParseIdentifier();
-        if (Current().Type == TokenType.FunctionKwd) return ParseFunctionDef();
+        Token c = Current();
+        if (c.Type == TokenType.ProgramKwd) return ParseProgram();
+        if (c.Type == TokenType.GlobalsKwd) return ParseGlobals();
+        if (c.Type == TokenType.OpenBracket) return ParseBrackets();
+        if (c.Type == TokenType.IncludeKwd) return ParseInclude();
+        if (c.Type == TokenType.Identifier) return ParseIdentifier(Node.Null);
+        if (c.Type == TokenType.FunctionKwd) return ParseFunctionDef();
+        if (c.Type == TokenType.IfKwd) return ParseIfStatement();
+        if (c.Type == TokenType.Newline) { Step(1); return ParseNode(); }
+
+        if (Keywords.IsLiteral(c.Type))  { Node n = new TokenNode(c); Step(1); return n; }
         
-        LOGGER.Error( Current().Position + " Invalid token " + Current().Type);
+        Logger.Throw( ErrorType.InvalidToken, c.Type.ToString(), c.Position);
         Step(1);
-        return Node.NULL;
+        return new TokenNode(c);
+    }
+
+    private Node ParseIfStatement()
+    {
+        Logger.Throw(ErrorType.WorkInProgressWarning, "If statements are not implemented yet!", Current().Position);
+        IfNode node = new IfNode();
+        Consume(TokenType.IfKwd);
+        Consume(TokenType.OpenParenthesis);
+        node.Add(ParseNode(), "statement");
+        Consume(TokenType.CloseParenthesis);
+        return node.Add(ParseBrackets(), "code");
     }
 
     private Node ParseFunctionDef()
@@ -102,21 +117,46 @@ public class Parser
 
     }
 
-    private Node ParseIdentifier()
+    private Node ParseIdentifier(Node parent)
     {
         Token identifier = Consume(TokenType.Identifier);
         var c = Current();
+        //LOGGER.Log(c.ToString());
         if (c.Type == TokenType.Accessor)
-            return new IdentifierNode().Add(new TokenNode(identifier), "object").Add(ParseAccessor(), "child");
+        {
+            IdentifierNode node = new IdentifierNode();
+            node.Add(new TokenNode(identifier), "object").Add(ParseAccessor(parent), "child");
+            return node;
+        }
+
+        if (c.Type == TokenType.OpenParenthesis)
+            return ParseFunctionCall().Add((Node)parent.ClimbToTopNode(NodeType.Identifier), "name");
 
         return new TokenNode(identifier);
     }
 
-    private Node ParseAccessor()
+    private Node ParseFunctionCall()
+    {
+        CallNode node = new CallNode();
+        Consume(TokenType.OpenParenthesis);
+        var pcount = 0;
+        do
+        {
+            node.Add(ParseNode(), "param[" + pcount + "]");
+            pcount++;
+        } 
+        while (Current().Type != TokenType.CloseParenthesis);
+        
+        Consume(TokenType.CloseParenthesis);
+        
+        return node;
+    }
+
+    private Node ParseAccessor(Node parent)
     {
         Consume(TokenType.Accessor);
 
-        return ParseIdentifier();
+        return ParseIdentifier(parent);
     }
 
     private Node ParseInclude()
@@ -130,10 +170,20 @@ public class Parser
         Consume(TokenType.OpenBracket);
         BlockNode node = new BlockNode();
 
-        while (Current().Type != TokenType.CloseBracket)
+        while (Peek(1).Type != TokenType.CloseBracket)
         {
+            if (Current().Type == TokenType.EndOfFile)
+            {
+                Logger.Throw(ErrorType.EndOfFileException, "Expected \"}\", got EOF", Current().Position);
+                break;
+            }
+            if (Current().Type == TokenType.CloseBracket)
+            {
+                break;
+            }
             node.Add(ParseNode());
-        }
+        } 
+
 
         Consume(TokenType.CloseBracket);
         

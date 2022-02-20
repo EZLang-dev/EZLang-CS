@@ -1,6 +1,6 @@
 using System.Text;
 using EZLang.Compiler.Language;
-using OpenAbility.Debug;
+using EZLang.Diagnostics;
 
 namespace EZLang.Compiler.Lexing;
 
@@ -11,8 +11,6 @@ public class Lexer
     private int ptr;
 
     private Position pos;
-
-    private Logger LOGGER = Logger.GetLogger("Lexer");
 
 
     private bool EndOfFile()
@@ -70,7 +68,8 @@ public class Lexer
             if(c == '"') { LexString(); continue; }
 
             if (char.IsWhiteSpace(c)) { Step(1); continue;}
-            if (c == ';') { Step(1); continue;}
+            if (c == ';') { Logger.Throw(ErrorType.UnsupportedError, "Semicolon newlines are not supported"); Step(1); continue;}
+            if (c == '\n') { AddAndStep(TokenType.Newline); continue;}
             
             if(c == '(') { AddAndStep(TokenType.OpenParenthesis); continue;}
             if(c == ')') { AddAndStep(TokenType.CloseParenthesis); continue;}
@@ -93,7 +92,7 @@ public class Lexer
                 continue;
             }
             
-            LOGGER.Error($"{pos}Unexpected character \"{c}\"");
+            Logger.Throw(ErrorType.UnexpectedCharacter, c.ToString(), pos);
             Step(1);
         }
     }
