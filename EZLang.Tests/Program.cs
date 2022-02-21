@@ -13,6 +13,7 @@ namespace EZLang.Tests
 program{
     package sys
     sys.Console.Print(""Hello World!"")
+    4 + 6 * 2 / 12 - 2
 }
 if(hello){
     sys.Console.Print(""Hi!"")

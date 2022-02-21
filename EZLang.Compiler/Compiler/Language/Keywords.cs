@@ -22,14 +22,4 @@ public static class Keywords
         return TokenType.Identifier;
     }
 
-    private static TokenType[] LiteralTypes = new[]
-    {
-        TokenType.String,
-        TokenType.Number
-    };
-
-    public static bool IsLiteral(TokenType type)
-    {
-        return LiteralTypes.Contains(type);
-    }
 }

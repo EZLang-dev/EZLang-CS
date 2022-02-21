@@ -6,7 +6,7 @@ public enum NodeType
     Undefined,
     Token,
     Program,
-    Operation,
+    Expression,
     Definition,
     Include,
     Globals,

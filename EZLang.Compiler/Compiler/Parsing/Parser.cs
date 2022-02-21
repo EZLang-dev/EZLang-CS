@@ -48,7 +48,21 @@ public class Parser
     {
         if (Current().Type != type)
         {
-            Logger.Throw(ErrorType.UnexpectedToken, Current().Type.ToString(), Current().Position);
+            Logger.Throw(ErrorType.UnexpectedToken, "Got " + Current() + ", Expected " + type, Current().Position);
+            Step(1);
+            return Token.NULL;
+        }
+
+        Token t = Current();
+        Step(1);
+        return t;
+    }
+    
+    private Token ConsumeGroup(TokenType type, TokenType[] group)
+    {
+        if (!Groups.InGroup(type, group))
+        {
+            Logger.Throw(ErrorType.UnexpectedTokenGroup, Current().Type + " did not fit into group " + type, Current().Position);
             Step(1);
             return Token.NULL;
         }
@@ -74,7 +88,7 @@ public class Parser
 
     }
 
-    private Node ParseNode()
+    private Node ParseNode(bool expression = false)
     {
         Token c = Current();
         if (c.Type == TokenType.ProgramKwd) return ParseProgram();
@@ -86,11 +100,75 @@ public class Parser
         if (c.Type == TokenType.IfKwd) return ParseIfStatement();
         if (c.Type == TokenType.Newline) { Step(1); return ParseNode(); }
 
-        if (Keywords.IsLiteral(c.Type))  { Node n = new TokenNode(c); Step(1); return n; }
+        if (Groups.InGroup(c.Type, Groups.GROUP_LITERALS) && !expression) return ParseExpression();
+        if (Groups.InGroup(c.Type, Groups.GROUP_LITERALS) && expression) { Step(1); return new TokenNode(Peek(-1)); }
         
         Logger.Throw( ErrorType.InvalidToken, c.Type.ToString(), c.Position);
         Step(1);
         return new TokenNode(c);
+    }
+    
+    
+    /// <summary>
+    /// Parse a BEDMAS expression.
+    /// This function is indeed most possibly recursive!
+    /// </summary>
+    /// <returns>The expression node</returns>
+    
+    private Node ParseExpression()
+    {
+        ExpressionNode node = new ExpressionNode();
+
+        node.Add(ParseNode(true), "left");
+
+        if (Current().Type == TokenType.Operation)
+        {
+            Token operation = Consume(TokenType.Operation);
+            int strength = GetOperatorPrecedence(operation.Value);
+            node.Add(new TokenNode(operation), "operation");
+            Node right = ParseNode();
+
+            if (right.Children.ContainsKey("operation"))
+            {
+                Logger.Throw(ErrorType.DebugMessage, "Parsing operation");
+                Token rightOp = ((TokenNode) right.Children["operation"]).value;
+
+                if (GetOperatorPrecedence(rightOp.Value) > strength)
+                {
+                    
+                    node.Add(right.Children["left"], "right");
+                    right.Remove("left");
+                    
+                    right.Add(node, "right");
+                    right.PrintPretty();
+                    return right;
+                }
+            }
+            
+            
+        }
+
+        return node;
+    }
+    
+    /// <summary>
+    /// The thing responible for calculating BEDMAS
+    /// </summary>
+    /// <param name="op"></param>
+    /// <returns></returns>
+
+    private static int GetOperatorPrecedence(string op)
+    {
+        //TODO: Fix brackets, they are not included here.
+
+        return op switch
+        {
+            "/" => 4,
+            "*" => 4,
+            "+" => 1,
+            "-" => 1,
+            _ => 0
+        };
     }
 
     private Node ParseIfStatement()

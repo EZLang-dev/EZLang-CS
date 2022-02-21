@@ -76,7 +76,7 @@ public class Lexer
             if(c == '{') { AddAndStep(TokenType.OpenBracket); continue;}
             if(c == '}') { AddAndStep(TokenType.CloseBracket); continue;}
             if(c == '.') { AddAndStep(TokenType.Accessor); continue;}
-            if(new char[] { '*', '+', '-', '/' }.Contains(c)) { AddAndStep(TokenType.Operation); continue;}
+            if(new char[] { '*', '+', '-', '/' }.Contains(c)) { AddAndStep(TokenType.Operation, c.ToString()); continue;}
 
             if (c == '=')
             {
